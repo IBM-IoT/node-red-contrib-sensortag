@@ -36,7 +36,6 @@ module.exports = function( RED ) {
 			this.tagOptions[ tagOptionFields[i] ] = this[ tagOptionFields[i] ];
 
 		this.name = n.name;
-		this.topic = n.topic || "sensorTag";
 
 		this.tags = {};
 		this.tagCount = 0;
