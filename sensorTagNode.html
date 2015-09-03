@@ -6,6 +6,10 @@
   .form-row.checkbox > label {
     width:80%;
   }
+
+  .form-row.checkbox > .form-row > input {
+    width: 100px;
+  }
 </style>
 
 <script type="text/x-red" data-template-name="sensorTag">
@@ -35,7 +39,7 @@
       <label for="node-input-magnetometer">Magnetometer</label>
       <div class="form-row">
         <label for="node-input-magnetometerPeriod"><i class="icon-time"></i> Period</label>
-        <input id="node-input-magnetometerPeriod" type="text">
+        <input id="node-input-magnetometerPeriod" type="text"> ms
       </div>
     </div>
     <div class="form-row checkbox">
@@ -43,7 +47,7 @@
       <label for="node-input-accelerometer">Accelerometer</label>
       <div class="form-row">
         <label for="node-input-accelerometerPeriod"><i class="icon-time"></i> Period</label>
-        <input id="node-input-accelerometerPeriod" type="text">
+        <input id="node-input-accelerometerPeriod" type="text"> ms
       </div>
     </div>
     <div class="form-row checkbox">
@@ -51,7 +55,7 @@
       <label for="node-input-gyroscope">Gyroscope</label>
       <div class="form-row">
         <label for="node-input-gyroscopePeriod"><i class="icon-time"></i> Period</label>
-        <input id="node-input-gyroscopePeriod" type="text">
+        <input id="node-input-gyroscopePeriod" type="text"> ms
       </div>
     </div>
     <div class="form-row checkbox">
@@ -59,7 +63,7 @@
       <label for="node-input-luxometer">Luxometer (CC2650 only)</label>
       <div class="form-row">
         <label for="node-input-luxometerPeriod"><i class="icon-time"></i> Period</label>
-        <input id="node-input-luxometerPeriod" type="text">
+        <input id="node-input-luxometerPeriod" type="text"> ms
       </div>
     </div>
     <div class="form-row checkbox">
