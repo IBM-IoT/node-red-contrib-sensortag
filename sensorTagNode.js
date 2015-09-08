@@ -5,12 +5,18 @@ function clamp( v , min , max ) {
 module.exports = function( RED ) {
 
 	var SensorTag = require( "sensortag" );
+	var Manager = require( "./sensorTagManager.js" );
+
+	Manager.init();
 
 	function SensorTagNode( n ) {
 
 		RED.nodes.createNode( this , n );
+		var self = this;
 
 		this.DEFAULT_SENSOR_FREQ = 1000;
+
+		this.deviceFilter = n.devices;
 
 		this.temperature = n.temperature;
 		this.pressure = n.pressure;
@@ -37,26 +43,20 @@ module.exports = function( RED ) {
 
 		this.name = n.name;
 
-		this.tags = {};
-		this.tagCount = 0;
+		this.tags = [];
 		this.connectedTagCount = 0;
+		this.isConnected = false;
 
-		this.isScanning = false;
-		this.isRescanning = false;
+		if( this.deviceFilter.length > 0 ) this.updateStatus( "yellow" , "Waiting for tags..." );
+		else this.updateStatus( "red" , "No tags configured." );
 
-		this.onDiscoverBound = this.onDiscover.bind( this );
+		this.on( "close" , function( done ) {
+			self.prepareDisconnectAll();
 
-		this.startScanning();
-
-		this.on( "close" , function() {
-			if( this.isScanning )
-			{
-				SensorTag.stopDiscoverAll( this.onDiscoverBound );
-			}
-
-			for( var id in this.tags )
-				this.tags[id].disconnect();
+			Manager.removeNode( self , done );
 		} );
+
+		Manager.addNode( this );
 	}
 
 	RED.nodes.registerType( "sensorTag" , SensorTagNode );
@@ -83,12 +83,6 @@ module.exports = function( RED ) {
 	SensorTagNode.prototype.onTagDisconnect = function( tag ) {
 		this.connectedTagCount--;
 		this.updateStatusConnected();
-
-		if( this.isRescanning && this.connectedTagCount === 0 )
-		{
-			this.isRescanning = false;
-			this.startScanning();
-		}
 	};
 
 	SensorTagNode.prototype.updateStatus = function( color , message ) {
@@ -101,68 +95,58 @@ module.exports = function( RED ) {
 
 	SensorTagNode.prototype.updateStatusConnected = function()
 	{
-		this.updateStatus( "green" , "Connected: " + this.connectedTagCount + "/" + this.tagCount );
+		this.updateStatus( "green" , "Connected: " + this.connectedTagCount + "/" + this.tags.length );
 	};
 
-	SensorTagNode.prototype.startScanning = function()
+	SensorTagNode.prototype.onNewTag = function( newTag , isUsed )
 	{
-		if( this.isScanning ) return;
+		if( this.deviceFilter.indexOf( newTag.id ) === -1 ) return false;
 
-		this.tags = {};
-		this.tagCount = 0;
+		if( isUsed )
+		{
+			this.updateStatus( "red" , "Tag already used" );
+			return false;
+		}
 
-		this.log( "Starting to scan..." );
-		SensorTag.discoverAll( this.onDiscoverBound );
-		this.isScanning = true;
+		var tag = new Tag( this , newTag , this.tagOptions );
+		this.tags.push( tag );
 
-		this.updateStatus( "yellow" , "Scanning..." );
-	};
+		if( this.tags.length === this.deviceFilter.length )
+		{
+			// Give other nodes a chance to initialize
+			var self = this;
+			setTimeout( function() {
+				Manager.nodeReady( self );
+			} , 1000 );
+		}
 
-	SensorTagNode.prototype.onDiscover = function( discoveredTag )
-	{
-		// Should never happend if SCAN_DUPLICATES = false
-		if( this.tags.hasOwnProperty( discoveredTag.uuid ) ) return;
-
-		var tag = new Tag( this , discoveredTag , this.tagOptions );
-		this.tags[ discoveredTag.uuid ] = tag;
-		this.tagCount++;
-
-		this.updateStatus( "yellow" , "Discovered: " + this.tagCount );
+		return true;
 	};
 
 	SensorTagNode.prototype.startConnecting = function()
 	{
-		if( this.tagCount < 1 ) return;
+		if( this.isConnected ) return;
+		if( this.tags.length < 1 ) return;
 
-		SensorTag.stopDiscoverAll( this.onDiscoverBound );
-		this.isScanning = false;
-		this.updateStatus( "green" , "Connecting..." );
-
-		for( var i in this.tags )
+		this.log( "Connecting to all devices (" + this.tags.length + ")..." );
+		for( var i = 0; i < this.tags.length; i++ )
 		{
 			this.tags[i].connect();
 		}
+
+		this.isConnected = true;
 	};
 
-	SensorTagNode.prototype.onNodeButtonPress = function() {
-		if( !this.isScanning )
-		{
-			if( this.connectedTagCount === 0 ) this.startScanning();
-			else
-			{
-				this.isRescanning = true;
+	SensorTagNode.prototype.prepareDisconnectAll = function()
+	{
+		for( var i = 0; i < this.tags.length; i++ )
+			this.tags[i].attemptReconnect = false;
 
-				for( var i in this.tags )
-				{
-					this.tags[i].attemptReconnect = false;
-					this.tags[i].disconnect();
-				}
-			}
-		}
-		else
-		{
-			this.startConnecting();
-		}
+		this.tags = [];
+		this.connectedTagCount = 0;
+		this.isConnected = false;
+
+		this.updateStatus( "red" , "Closed." );
 	};
 
 	var Tag = function( parent , tag , options )
@@ -184,6 +168,7 @@ module.exports = function( RED ) {
 
 	Tag.prototype.connect = function()
 	{
+		if( !this.disconnected ) return;
 		this.log( "Connecting..." );
 		this.tag.connect( this.onConnect.bind( this ) );
 	};
@@ -290,21 +275,15 @@ module.exports = function( RED ) {
 		}
 	};
 
-	Tag.prototype.disconnect = function()
-	{
-		if( this.disconnected ) return;
-		this.attemptReconnect = false;
-		this.tag.disconnect();
-	};
-
 	Tag.prototype.onDisconnect = function()
 	{
 		if( this.disconnected ) return;
 		this.disconnected = true;
-		this.parent.onTagDisconnect( this );
 
 		if( this.attemptReconnect )
 		{
+			this.parent.onTagDisconnect( this );
+			this.log( "Attempting to reconnect in 5s..." );
 			setTimeout( this.connect.bind( this ) , 5000 );
 		}
 	};
@@ -382,14 +361,25 @@ module.exports = function( RED ) {
 		}
 	};
 
-	// Handle Node-RED button request
-	RED.httpAdmin.post( "/sensorTag/:id/" , function( req , res ) {
-		var node = RED.nodes.getNode( req.params.id );
-		if( node )
-		{
-			node.onNodeButtonPress();
-			res.send( 200 );
-		}
-		else res.send( 404 );
+	// Sensor Tag Discovery API
+
+	RED.httpNode.get( "/sensortag/safe" , function( request , response ) {
+		Manager.setSafe();
+		response.send( 200 );
+	} );
+
+	RED.httpNode.get( "/sensortag/isscanning" , function( request , response ) {
+		response.setHeader( "Content-Type" , "application/json" );
+		response.end( JSON.stringify( { scanning : Manager.getIsScanning() } ) );
+	} );
+
+	RED.httpNode.get( "/sensortag/restart" , function( request , response ) {
+		Manager.restartScanning();
+		response.send( 200 );
+	} );
+
+	RED.httpNode.get( "/sensortag/tags" , function( request , response ) {
+		response.setHeader( "Content-Type" , "application/json" );
+		response.end( JSON.stringify( Manager.getTags() ) );
 	} );
 };
