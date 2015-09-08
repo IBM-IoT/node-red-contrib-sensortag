@@ -5,6 +5,8 @@ function clamp( v , min , max ) {
 module.exports = function( RED ) {
 
 	var SensorTag = require( "sensortag" );
+	var libMAC = require( "getmac" );
+
 	var Manager = require( "./sensorTagManager.js" );
 
 	Manager.init();
@@ -47,6 +49,8 @@ module.exports = function( RED ) {
 		this.connectedTagCount = 0;
 		this.isConnected = false;
 
+		this.macPrefix = "";
+
 		if( this.deviceFilter.length > 0 ) this.updateStatus( "yellow" , "Waiting for tags..." );
 		else this.updateStatus( "red" , "No tags configured." );
 
@@ -56,18 +60,22 @@ module.exports = function( RED ) {
 			Manager.removeNode( self , done );
 		} );
 
-		Manager.addNode( this );
+		libMAC.getMac( function( err , macAddress ) {
+			if( !err ) self.macPrefix = macAddress.replace( /:/gi , "" ) + ".";
+
+			Manager.addNode( self );
+		} );
 	}
 
 	RED.nodes.registerType( "sensorTag" , SensorTagNode );
 
-	SensorTagNode.prototype.sendData = function( uuid , sensorName , data )
+	SensorTagNode.prototype.sendData = function( uuid , sensorName , sensorID , data )
 	{
 		var now = ( new Date() ).getTime();
 
 		this.send( {
 			payload: {
-				id: uuid,
+				id: this.macPrefix + uuid + "." + sensorID,
 				tstamp: { $date : now },
 				sensor: sensorName,
 				json_data: data
@@ -290,7 +298,7 @@ module.exports = function( RED ) {
 
 	Tag.prototype.onIrTemperatureChange = function( object , ambient )
 	{
-		this.parent.sendData( this.tag.uuid , "temperature" , {
+		this.parent.sendData( this.tag.uuid , "temperature" , 0 , {
 			object : object,
 			ambient : ambient
 		} );
@@ -298,7 +306,7 @@ module.exports = function( RED ) {
 
 	Tag.prototype.onAccelerometerChange = function( x , y , z )
 	{
-		this.parent.sendData( this.tag.uuid , "accelerometer" , {
+		this.parent.sendData( this.tag.uuid , "accelerometer" , 1 , {
 			x : x,
 			y : y,
 			z : z
@@ -307,7 +315,7 @@ module.exports = function( RED ) {
 
 	Tag.prototype.onHumidityChange = function( temperature , humidity )
 	{
-		this.parent.sendData( this.tag.uuid , "humidity" , {
+		this.parent.sendData( this.tag.uuid , "humidity" , 2 , {
 			temperature : temperature,
 			humidity : humidity
 		} );
@@ -315,7 +323,7 @@ module.exports = function( RED ) {
 
 	Tag.prototype.onMagnetometerChange = function( x , y , z )
 	{
-		this.parent.sendData( this.tag.uuid , "magnetometer" , {
+		this.parent.sendData( this.tag.uuid , "magnetometer" , 3 , {
 			x : x,
 			y : y,
 			z : z
@@ -324,14 +332,14 @@ module.exports = function( RED ) {
 
 	Tag.prototype.onPressureChange = function( pressure )
 	{
-		this.parent.sendData( this.tag.uuid , "pressure" , {
+		this.parent.sendData( this.tag.uuid , "pressure" , 4 , {
 			pressure : pressure
 		} );
 	};
 
 	Tag.prototype.onGyroscopeChange = function( x , y , z )
 	{
-		this.parent.sendData( this.tag.uuid , "gyroscope" , {
+		this.parent.sendData( this.tag.uuid , "gyroscope" , 5 , {
 			x : x,
 			y : y,
 			z : z
@@ -340,14 +348,14 @@ module.exports = function( RED ) {
 
 	Tag.prototype.onLuxometerChange = function( lux )
 	{
-		this.parent.sendData( this.tag.uuid , "luxometer" , {
+		this.parent.sendData( this.tag.uuid , "luxometer" , 6 , {
 			lux : lux
 		} );
 	};
 
 	Tag.prototype.onKeyChange = function( left , right )
 	{
-		this.parent.sendData( this.tag.uuid , "keys" , {
+		this.parent.sendData( this.tag.uuid , "keys" , 7 , {
 			key1 : left,
 			key2 : right
 		} );
