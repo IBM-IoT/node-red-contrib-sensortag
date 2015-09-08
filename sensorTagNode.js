@@ -68,9 +68,9 @@ module.exports = function( RED ) {
 		this.send( {
 			payload: {
 				id: uuid,
-				tstamp : { $date : now },
+				tstamp: { $date : now },
 				sensor: sensorName,
-				data: data
+				json_data: data
 			}
 		} );
 	};
