@@ -74,10 +74,10 @@ module.exports = function( RED ) {
 		var now = ( new Date() ).getTime();
 
 		this.send( {
+			sensor: sensorName,
 			payload: {
 				id: this.macPrefix + uuid + "." + sensorID,
 				tstamp: { $date : now },
-				sensor: sensorName,
 				json_data: data
 			}
 		} );
