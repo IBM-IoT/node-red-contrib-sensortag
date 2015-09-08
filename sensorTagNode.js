@@ -268,7 +268,7 @@ module.exports = function( RED ) {
 			this.tag.notifyGyroscope( this.errorHandler.bind( this ) );
 		}
 
-		if( this.luxometer && this.type == "cc2650" )
+		if( this.luxometer && this.tag.type == "cc2650" )
 		{
 			this.tag.enableLuxometer( this.errorHandler.bind( this ) );
 			this.tag.setLuxometerPeriod( this.luxometerPeriod , this.errorHandler.bind( this ) );
