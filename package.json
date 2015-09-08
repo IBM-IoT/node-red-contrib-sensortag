@@ -24,7 +24,7 @@
   "homepage": "https://github.com/ibm-iot/node-red-contrib-sensortag",
   "node-red": {
     "nodes": {
-      "datasource": "datasource.js"
+      "sensorTag": "sensorTagNode.js"
     }
   },
   "dependencies": {
