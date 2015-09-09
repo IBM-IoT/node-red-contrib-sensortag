@@ -33,11 +33,11 @@ function addNode( node )
   var now = ( new Date() ).getTime();
   for( var id in tags )
   {
-    if( !tags[ id ].used && now - tags[ id ].lastUpdated >= TAG_TIMEOUT )
-    {
-      removeTag( id );
-      continue;
-    }
+    // if( !tags[ id ].used && now - tags[ id ].lastUpdated >= TAG_TIMEOUT )
+    // {
+    //   removeTag( id );
+    //   continue;
+    // }
     node.onNewTag( tags[id].tag , tags[id].used );
   }
 }
@@ -69,11 +69,11 @@ function getTags()
   var now = ( new Date() ).getTime();
   for( var id in tags )
   {
-    if( !tags[ id ].used && now - tags[ id ].lastUpdated >= TAG_TIMEOUT )
-    {
-      removeTag( id );
-      continue;
-    }
+    // if( !tags[ id ].used && now - tags[ id ].lastUpdated >= TAG_TIMEOUT )
+    // {
+    //   removeTag( id );
+    //   continue;
+    // }
     tagInfo[ id ] = {
       rssi : tags[ id ].rssi
     };
@@ -113,8 +113,8 @@ function startScanning()
   tagIDs = [];
   tagCount = 0;
 
-  SensorTag.CC2540.SCAN_DUPLICATES = true;
-  SensorTag.CC2650.SCAN_DUPLICATES = true;
+  // SensorTag.CC2540.SCAN_DUPLICATES = true;
+  // SensorTag.CC2650.SCAN_DUPLICATES = true;
   SensorTag.discoverAll( onDiscover );
   isScanning = true;
 }
