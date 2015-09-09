@@ -216,7 +216,8 @@ function disconnectAll()
     log( "Disconnecting: " + id );
     try
     {
-      tags[ id ].tag.disconnect( onDisconnect );
+      if( tags[ id ].used ) tags[ id ].tag.disconnect( onDisconnect );
+      else onDisconnect();
     }
     catch( e )
     {
