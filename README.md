@@ -30,3 +30,13 @@ If a device required by one of the nodes is not found, none of the nodes will co
 ![Missing tag](./docs/tagsmissing.png)
 
 Each node can specify a set of sensor read intervals for the devices the node will connect to. For the supported sensors, the intervals will be forced between 10 - 2550ms.
+
+### Output
+
+The node will output messages as it reads sensor data. The format of the message is:
+* `msg`
+  * `sensor`: Name of the sensor (e.g. `accelerometer`,`pressure`)
+  * `payload`:
+    * `id`: A unique ID built out of the host's MAC address, the sensor tag's MAC address and an integer number (0-7) representing the sensor (e.g. `29ab3d013384.b3b1cdf7fec0.2`)
+    * `tstamp`: UNIX timestamp in milliseconds when the data was received
+    * `json_data`: JSON Object containing sensor data. Differs for most sensors.
