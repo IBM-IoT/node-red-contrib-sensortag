@@ -2,7 +2,7 @@
 var SensorTag = require( "sensortag" );
 
 var TAG_TIMEOUT = 2000;
-var enableLogging = false;
+var enableLogging = true;
 
 var tags = {};
 var tagCount = 0;
@@ -17,6 +17,9 @@ var isSafeToConnect = true;
 
 function init()
 {
+  nobleDeviceFix( SensorTag.CC2540 );
+  nobleDeviceFix( SensorTag.CC2650 );
+
   startScanning();
 }
 
@@ -33,11 +36,11 @@ function addNode( node )
   var now = ( new Date() ).getTime();
   for( var id in tags )
   {
-    // if( !tags[ id ].used && now - tags[ id ].lastUpdated >= TAG_TIMEOUT )
-    // {
-    //   removeTag( id );
-    //   continue;
-    // }
+    if( !tags[ id ].used && now - tags[ id ].lastUpdated >= TAG_TIMEOUT )
+    {
+      removeTag( id );
+      continue;
+    }
     node.onNewTag( tags[id].tag , tags[id].used );
   }
 }
@@ -69,11 +72,11 @@ function getTags()
   var now = ( new Date() ).getTime();
   for( var id in tags )
   {
-    // if( !tags[ id ].used && now - tags[ id ].lastUpdated >= TAG_TIMEOUT )
-    // {
-    //   removeTag( id );
-    //   continue;
-    // }
+    if( !tags[ id ].used && now - tags[ id ].lastUpdated >= TAG_TIMEOUT )
+    {
+      removeTag( id );
+      continue;
+    }
     tagInfo[ id ] = {
       rssi : tags[ id ].rssi
     };
@@ -113,8 +116,8 @@ function startScanning()
   tagIDs = [];
   tagCount = 0;
 
-  // SensorTag.CC2540.SCAN_DUPLICATES = true;
-  // SensorTag.CC2650.SCAN_DUPLICATES = true;
+  SensorTag.CC2540.SCAN_DUPLICATES = true;
+  SensorTag.CC2650.SCAN_DUPLICATES = true;
   SensorTag.discoverAll( onDiscover );
   isScanning = true;
 }
@@ -236,3 +239,35 @@ module.exports = {
   setSafe : setSafe,
   restartScanning : restartScanning
 };
+
+function nobleDeviceFix( constructor )
+{
+  constructor.deviceList = {};
+  constructor._is = constructor.is;
+  constructor._startScanning = constructor.startScanning;
+
+  constructor.is = function( peripheral ) {
+    if( constructor._is( peripheral ) ) {
+      var device;
+
+      if( constructor.deviceList.hasOwnProperty( peripheral.id ) )
+      {
+        device = constructor.deviceList[ peripheral.id ];
+      }
+      else
+      {
+        device = new constructor(peripheral);
+        constructor.deviceList[ peripheral.id ] = device;
+      }
+
+      constructor.emitter.emit( "discover" , device );
+    }
+
+    return false;
+  };
+
+  constructor.startScanning = function() {
+    constructor.deviceList = {};
+    constructor._startScanning();
+  };
+}
